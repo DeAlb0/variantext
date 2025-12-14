@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VarianText Viewer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div id="main-content">
+            <p>Loading example.md...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="variantext.js"></script>
+    <script>
+        // Load example.md and render it with marked.js, then process variants
+        fetch('example.md')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load example.md');
+                }
+                return response.text();
+            })
+            .then(markdownText => {
+                // Convert the markdown to HTML using marked.js
+                const htmlContent = marked.parse(markdownText);
+                
+                // Insert the HTML into the main content div
+                const mainContent = document.getElementById('main-content');
+                mainContent.innerHTML = htmlContent;
+                
+                // Now process the variants with variantext.js
+                processVariants();
+            })
+            .catch(error => {
+                document.getElementById('main-content').innerHTML = 
+                    '<p style="color: red;">Error loading example.md: ' + error.message + '</p>';
+            });
+    </script>
+</body>
+</html>
