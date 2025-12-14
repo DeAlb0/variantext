@@ -1,5 +1,5 @@
 
-<script src="https://dealb0.github.io/variantext/example.html"></script>
+<script src="https://dealb0.github.io/variantext/variantext.js"></script>
 
 # Example usage of varianText
 
@@ -16,7 +16,8 @@ p sections under it which contain the text.
 
 For Markdown you need a converter from markdown to HTML. After this has
 performed the conversion variantext must be executed by calling the
-processVariants function. See mdshow.html as example ##
+processVariants function. See 
+[mdshow.html](https://github.com/DeAlb0/variantext/blob/main/mdshow.html) as example ##
 
 In your text you can use the double hash '# #' appended with the variant
 or release name. At the end of the variant specific part you can either
