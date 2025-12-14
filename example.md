@@ -1,5 +1,5 @@
 
-<script src="https://dealb0.github.io/variantext/example.html">
+<script src="https://dealb0.github.io/variantext/example.html"></script>
 
 # Example usage of varianText
 
