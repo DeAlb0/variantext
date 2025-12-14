@@ -27,3 +27,8 @@ Or the source files like
 https://github.com/DeAlb0/variantext/blob/main/example.md
 
 https://github.com/DeAlb0/variantext/blob/main/mdshow.html
+
+## Disclaimer
+
+There is much to do in terms of documentation and extension, fixing.
+Regard this a first working version.

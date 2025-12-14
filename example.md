@@ -1,11 +1,13 @@
 
+<script src="https://dealb0.github.io/variantext/example.html">
+
 # Example usage of varianText
 
 This example explains how to use variantext.js and at the same time
 is an example how to use it. This is done by explaining the option
 to use it directly with HTML or with Markdown.
 
-##HTML
+##HTML=
 
 in plain HTML you have to create a main-content div and preferably
 p sections under it which contain the text.
