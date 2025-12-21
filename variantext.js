@@ -3,8 +3,27 @@
 let sortedVariants = [];
 
 document.addEventListener('DOMContentLoaded', function () {
+  logStart();
   processVariants();
 });
+
+function log(msg) {
+  document.getElementById('variant-log').innerText += msg + '\n';
+}
+
+function logStart() {
+  const main = document.getElementById('main-content');
+  if (!main) return;
+  let vlist = document.getElementById('variant-log');
+  if (!vlist) {
+    vlist = document.createElement('div');
+    vlist.id = 'variant-log';
+    vlist.style.marginBottom = '1em';
+    main.parentNode.insertBefore(vlist, main);
+  } else {
+    vlist.innerHTML = '';
+  }
+}
 
 function processVariants() {
   const main = document.getElementById('main-content');
@@ -44,7 +63,7 @@ function processVariants() {
     variantColorMap[variant] = color;
     idx++;
   });
-  styleContent += `#main-content[data-exclusive="1"] * { display: none; }\n`;
+  styleContent += `#main-content[data-exclusive="1"] [data-variant=""] { display: none; }\n`;
   // Remove old dynamic style if present
   let oldStyle = document.getElementById('variantext-dynamic-style');
   if (oldStyle) oldStyle.remove();
@@ -55,59 +74,73 @@ function processVariants() {
     document.head.appendChild(styleEl);
   }
   const vmarker = '##'
-  let currentVariant = ''
-  let lastVariantNode = null;
-  // Get sorted list of all variants for alphabetical comparison
-  sortedVariants = Array.from(variantSet).sort();
-  
-  const children = Array.from(main.querySelectorAll('*'));
-  for (const child of children) {
-    if (currentVariant) {
-      child.dataset.variant = currentVariant;
-      const computedStyle = window.getComputedStyle(child);
-      child.dataset.blockstyle = computedStyle.display;
+  sortedVariants = Array.from(variantSet).sort();  // sorted list of all variants for alphabetical comparison
+
+  const variantState = {
+    currentVariant: '',
+    lastVariantNodeList: [],
+    lastVariant: null,
+    addNode(node, marker = undefined) {
+      if (marker !== undefined) {
+        this.currentVariant = marker;
+        if (this.lastVariant !== this.currentVariant) {
+          for (const lastVariantNode of this.lastVariantNodeList) {
+            lastVariantNode.dataset.nextVariant = this.currentVariant;
+          }
+          this.lastVariantNodeList = [];
+        }
+      }
+      this.lastVariant = this.currentVariant;
+      if (!node) return;
+      node.dataset.variant = this.currentVariant;
+      if ( this.currentVariant !== '' ) {
+        this.lastVariantNodeList.push(node);
+      }
     }
-    if (true || child.tagName !== 'P') {
-      let newHTML = child.innerHTML;
-      // find position of vmarker in newHTML
-      currentP = child;
-      let markerPos = newHTML.indexOf(vmarker);
-      while (markerPos !== -1) {
-        let beforeMarker = newHTML.substring(0, markerPos);
-        if ( beforeMarker.trim() === '' ) {
-          let prevNode = currentP.previousSibling;
-          currentP.remove();
-          currentP = prevNode;
-        } else {
-          currentP.innerHTML = beforeMarker
+  };
+
+  // create pattern from vmarker
+  const pattern = new RegExp(vmarker + '[A-Za-z0-9.]*=?\\s*', 'g');
+  //   const pattern = /##[A-Za-z0-9.]*=?\s*/g;
+  // TODO: get a more exhaustive list of block-level elements to process
+  const children = Array.from(main.querySelectorAll(':scope > p, :scope > div, :scope > section, :scope > pre, :scope > ul, :scope h2'));
+  for (const child of children) {
+    //    if (!child.innerHTML.includes(vmarker)) continue;
+    text = child.innerHTML
+    const parts = text.split(pattern);  // Gets text between markers
+    if (parts.length <= 1) {      // No markers found
+      variantState.addNode(child);
+      continue;
+    }
+    const markers = text.match(pattern).map(m => m.replace('##', '').replace('=', '').trim()); // Gets the markers
+    if (parts.length === 2) {
+      child.innerHTML = child.innerHTML.replace(pattern, ''); // Remove marker
+      if (parts[0].trim() === '') {        // Marker at start only
+        variantState.addNode(child, markers[0]);
+        if (child.innerHTML.trim() === '') {
+          child.remove();
         }
-        // find position of next space after vmarker
-        let spacePos = newHTML.indexOf(' ', markerPos + vmarker.length);
-        if (spacePos === -1) {
-          spacePos = newHTML.length;
-        }
-        // extract variant name (may include = for exclusive)
-        currentVariant = newHTML.substring(markerPos + vmarker.length).replace(/([^A-Za-z0-9\.=]|\n)(.|\n)*/, '')
-        newHTML = newHTML.substring(spacePos).trim();
-        const newP = document.createElement('p');
-        if (currentVariant) {
-          newP.dataset.variant = currentVariant;
-        }
-        currentP.parentNode.insertBefore(newP, currentP.nextSibling);
-        currentP = newP;
-        if ( lastVariantNode ) {
-          lastVariantNode.dataset.nextVariant = currentVariant
-        }
-        lastVariantNode = currentP;
-        markerPos = newHTML.indexOf(vmarker);
+        continue;
+      } else if (parts[1].trim() === '') {        // Marker at end only
+        variantState.addNode(child);
+        variantState.addNode(null, markers[0]);
+        continue;
       }
-      if ( child.tagName ==='P' && newHTML.trim() === '' ) {
-        currentP.remove();
-      } else if ( newHTML !== currentP.innerHTML ) {
-        currentP.innerHTML = newHTML;
+    }
+    // log('Split into ' + parts.length + ' parts. Markers: ' + (markers ? markers.length : 0));
+    child.innerHTML = '';
+    for (const [index, part] of parts.entries()) {
+      // log(' Part ' + index + ': "' + markers[index] + ' - ' + part.trim().substring(0, 80) + '"');
+      let newP = null;
+      if (part !== '') {
+        newP = document.createElement('span');
+        newP.innerHTML = part;
+        child.appendChild(newP);
       }
+      variantState.addNode(newP, markers[index-1]);
     }
   }
+  variantState.addNode(null, ''); // Finalize last node
   // Create button container
   let btnContainer = document.getElementById('variant-btn-container');
   if (!btnContainer) {
@@ -123,9 +156,9 @@ function processVariants() {
     const btn = document.createElement('button');
     btn.textContent = '' + variant;
     btn.onclick = function (ev) {
-       showVariant(variant);
-       ev.target.setAttribute('aria-pressed', 'true');
-     };
+      showVariant(variant);
+      ev.target.setAttribute('aria-pressed', 'true');
+    };
     btn.style.background = variantColorMap[variant];
     btn.style.color = '#333';
     btn.style.borderWidth = 'thin';
@@ -144,42 +177,50 @@ selectedVariant = '';
 function showVariant(variant = '') {
   const main = document.getElementById('main-content');
   if (!main) return;
-  for ( const button of document.querySelectorAll('#variant-btn-container button') ) {
+  for (const button of document.querySelectorAll('#variant-btn-container button')) {
     button.setAttribute('aria-pressed', button.textContent === variant ? 'true' : 'false');
   }
   const onlyFit = (variant === selectedVariant);
   main.dataset.exclusive = +(onlyFit ? ! +main.dataset.exclusive : 0);
   selectedVariant = variant;
-  const all = main.querySelectorAll('[data-variant]');
-  all.forEach(el => {
-    const elVariant = el.dataset.variant;
-    const isExclusive = elVariant.endsWith('=');
-    const elVariantClean = elVariant.replace('=', '');
-    
-    // Show if:
-    // 1. Common content (empty variant)
-    // 2. Showing all variants (variant === '')
-    // 3. Element's variant matches selected variant (with or without '=')
-    // 4. Element is non-exclusive and its variant comes alphabetically at or after selected variant
-    
-    if (variant === '' || elVariantClean === variant) {
-      el.style.display = el.dataset.blockstyle ?? 'block';
-    } else if (!isExclusive) {
-      // Non-exclusive content: show if element's variant is alphabetically >= selected variant
-      const elIndex = sortedVariants.indexOf(elVariantClean);
-      const selectedIndex = sortedVariants.indexOf(variant);
-      let nextVariantIndex = -1;
-      if (el.dataset.nextVariant) {
-        nextVariantIndex = sortedVariants.indexOf(el.dataset.nextVariant.replace('=', ''));
-      }
-      if (elIndex !== -1 && selectedIndex !== -1 && selectedIndex >= elIndex && (nextVariantIndex === -1 || selectedIndex < nextVariantIndex)) {
-        el.style.display = '';
-      } else {
-        el.style.display = 'none';
-      }
-    } else {
-      // Exclusive content for different variant
-      el.style.display = 'none';
+  let beforeList = []
+  let behindList = []
+  let varFound = false
+  for (varname of sortedVariants) {
+    if (varFound) {
+      behindList.push(varname)
     }
-  });
+    varFound |= (varname === selectedVariant)
+    if (!varFound) {
+      beforeList.push(varname);
+    }
+  }
+  filterStyle = document.getElementById('variantext-filter-style');
+  if (filterStyle === null) {
+    filterStyle = document.createElement('style');
+    filterStyle.id = 'variantext-filter-style';
+    document.head.appendChild(filterStyle);
+  }
+  if (variant === '') {
+    filterStyle.innerHTML = '';
+    return;
+  }
+  const deselectedVariants = [
+    // [data-variant] is added just to increase specifity of the CSS rule
+    ...[...beforeList, variant].map(v => `[data-next-variant="${v}"][data-variant]`),
+    ...behindList.map(v => `[data-variant="${v}"]`)
+  ].join(',');
+
+  filterStyle.innerHTML = `
+    #main-content[data-exclusive="1"] [data-variant]:not([data-variant="${selectedVariant}"]) {
+      display: none;
+    }
+    ${deselectedVariants} {
+      display: none;
+      color: #eee;
+    }
+    ${beforeList.map(v => `[data-variant="${v}"]`).join(',')} {
+      /* color: red; */
+    }
+  `;
 }
