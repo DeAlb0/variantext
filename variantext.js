@@ -2,7 +2,8 @@
 // Processes special ##variant tags in #main-content and provides functions to show/hide variants
 let sortedVariants = [];
 let variantextConfig = {
-  autoTable: true  // If true, automatically create a comparison table after processing variants
+  autoTable: true,  // If true, automatically create a comparison table after processing variants
+  tableHeading: 'Variant Comparison Table'  // Heading for the variant table
 };
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -13,7 +14,19 @@ document.addEventListener('DOMContentLoaded', function () {
     if (main) {
       const table = maketbl(main);
       if (table) {
-        main.parentNode.insertBefore(table, main.nextSibling);
+        const tableContainer = document.createElement('div');
+        tableContainer.id = 'variant-table-container';
+        tableContainer.style.marginTop = '30px';
+        
+        const tableHeading = document.createElement('h2');
+        tableHeading.textContent = variantextConfig.tableHeading;
+        tableHeading.style.marginBottom = '15px';
+        
+        tableContainer.appendChild(tableHeading);
+        tableContainer.appendChild(table);
+        
+        // Insert the table after the main content
+        main.parentNode.appendChild(tableContainer);
       }
     }
   }
