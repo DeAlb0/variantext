@@ -1,11 +1,151 @@
 // variantext.js
 // Processes special ##variant tags in #main-content and provides functions to show/hide variants
 let sortedVariants = [];
+let variantextConfig = {
+  autoTable: true  // If true, automatically create a comparison table after processing variants
+};
 
 document.addEventListener('DOMContentLoaded', function () {
   logStart();
   processVariants();
+  if ( variantextConfig.autoTable ) {
+    const main = document.getElementById('main-content');
+    if (main) {
+      const table = maketbl(main);
+      if (table) {
+        main.parentNode.insertBefore(table, main.nextSibling);
+      }
+    }
+  }
 });
+
+function variantextSetConfig(config) {
+  variantextConfig = {...variantextConfig, ...config};
+}
+/**
+ * Creates a table showing variant content across columns
+ * Each variant gets a column, and content spanning multiple variants is merged
+ * @param {HTMLElement} container - The container element to insert the table into
+ * @returns {HTMLTableElement} The created table element
+ */
+function maketbl(container) {
+  if (!container) {
+    container = document.getElementById('main-content');
+  }
+  if (!container) return null;
+
+  // Collect all variant-marked elements in order
+  const variantElements = container.querySelectorAll('[data-variant]');
+  const rows = [];
+  let currentRow = null;
+
+  // Group consecutive elements by their variant span
+  let currentRowCells = [];
+  let nextExpectedColumn = 0;
+  
+  for (const el of variantElements) {
+    const variant = el.dataset.variant || '';
+    const nextVariant = el.dataset.nextVariant || '';
+    const content = el.innerHTML.trim();
+    
+    if (!content) continue;
+
+    // Determine which variants this content applies to
+    const startIdx = variant ? sortedVariants.indexOf(variant.replace('=', '')) : 0;
+    const endIdx = nextVariant ? sortedVariants.indexOf(nextVariant.replace('=', '')) : sortedVariants.length;
+    
+    const cellData = {
+      content: content,
+      startVariant: startIdx >= 0 ? startIdx : 0,
+      endVariant: endIdx >= 0 ? endIdx : sortedVariants.length,
+      colspan: Math.max(1, (endIdx >= 0 ? endIdx : sortedVariants.length) - (startIdx >= 0 ? startIdx : 0))
+    };
+
+    // Check if this cell can fit in the current row
+    if (cellData.startVariant >= nextExpectedColumn) {
+      // Cell fits in current row
+      currentRowCells.push(cellData);
+      nextExpectedColumn = cellData.endVariant;
+    } else {
+      // Cell doesn't fit, start a new row
+      if (currentRowCells.length > 0) {
+        rows.push(currentRowCells);
+      }
+      currentRowCells = [cellData];
+      nextExpectedColumn = cellData.endVariant;
+    }
+  }
+  
+  // Add the last row if it has cells
+  if (currentRowCells.length > 0) {
+    rows.push(currentRowCells);
+  }
+
+  // Create the table
+  const table = document.createElement('table');
+  table.style.width = '100%';
+  table.style.borderCollapse = 'collapse';
+  table.style.marginTop = '20px';
+
+  // Create header row with variant names
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  sortedVariants.forEach(variant => {
+    const th = document.createElement('th');
+    th.textContent = variant;
+    th.style.border = '1px solid #ccc';
+    th.style.padding = '8px';
+    th.style.backgroundColor = '#f0f0f0';
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  // Create tbody
+  const tbody = document.createElement('tbody');
+  
+  // Process rows - each row contains multiple cells that fit side by side
+  for (const rowCells of rows) {
+    const tr = document.createElement('tr');
+    let currentColumn = 0;
+    
+    for (const cellData of rowCells) {
+      // Add empty cells for gaps before this content
+      while (currentColumn < cellData.startVariant) {
+        const td = document.createElement('td');
+        td.style.border = '1px solid #ccc';
+        td.style.padding = '8px';
+        td.style.backgroundColor = '#f9f9f9';
+        tr.appendChild(td);
+        currentColumn++;
+      }
+      
+      // Add the content cell with appropriate colspan
+      const td = document.createElement('td');
+      td.innerHTML = cellData.content;
+      td.colSpan = cellData.colspan;
+      td.style.border = '1px solid #ccc';
+      td.style.padding = '8px';
+      tr.appendChild(td);
+      currentColumn = cellData.endVariant;
+    }
+    
+    // Add empty cells for any remaining columns at the end
+    while (currentColumn < sortedVariants.length) {
+      const td = document.createElement('td');
+      td.style.border = '1px solid #ccc';
+      td.style.padding = '8px';
+      td.style.backgroundColor = '#f9f9f9';
+      tr.appendChild(td);
+      currentColumn++;
+    }
+    
+    tbody.appendChild(tr);
+  }
+  
+  table.appendChild(tbody);
+  return table;
+}
 
 function log(msg) {
   document.getElementById('variant-log').innerText += msg + '\n';

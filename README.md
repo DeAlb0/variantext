@@ -24,7 +24,7 @@ https://dealb0.github.io/variantext/mdshow.html
 
 Or the source files like
 
-https://github.com/DeAlb0/variantext/blob/main/example.md
+https://github.com/DeAlb0/variantext/blob/main/description.md
 
 https://github.com/DeAlb0/variantext/blob/main/mdshow.html
 

@@ -9,18 +9,19 @@
 <body>
     <div class="container">
         <div id="main-content">
-            <p>Loading example.md...</p>
+            <p>Loading description.md...</p>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="variantext.js"></script>
     <script>
-        // Load example.md and render it with marked.js, then process variants
-        fetch('example.md')
+        variantextSetConfig({ autoTable: false });
+        // Load description.md and render it with marked.js, then process variants
+        fetch('description.md')
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Failed to load example.md');
+                    throw new Error('Failed to load description.md');
                 }
                 return response.text();
             })
@@ -34,10 +35,28 @@
                 
                 // Now process the variants with variantext.js
                 processVariants();
+                
+                // Create and insert the comparison table
+                const table = maketbl(mainContent);
+                if (table) {
+                    const tableContainer = document.createElement('div');
+                    tableContainer.id = 'variant-table-container';
+                    tableContainer.style.marginTop = '30px';
+                    
+                    const tableHeading = document.createElement('h2');
+                    tableHeading.textContent = 'Variant Comparison Table';
+                    tableHeading.style.marginBottom = '15px';
+                    
+                    tableContainer.appendChild(tableHeading);
+                    tableContainer.appendChild(table);
+                    
+                    // Insert the table after the main content
+                    mainContent.parentNode.appendChild(tableContainer);
+                }
             })
             .catch(error => {
                 document.getElementById('main-content').innerHTML = 
-                    '<p style="color: red;">Error loading example.md: ' + error.message + '</p>';
+                    '<p style="color: red;">Error loading description.md: ' + error.message + '</p>';
             });
     </script>
 </body>
